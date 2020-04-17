@@ -1,0 +1,16 @@
+if a == 3:
+    out("a is equal to 3")
+    for i in range(4):
+        if i == 2:
+            out("I is equal to 2")
+        elif i == 3:
+            out("I is equal to 3")
+        else:
+            out("I is equal to 1")
+elif v == 4:
+    out("this is me houzayfa")
+else:
+    out("this is a dummy text")
+
+for i in range(10):
+    out(i)
