@@ -35,7 +35,12 @@ PRINT_OUTPUT = 38
 QUOTE_CODE = 39
 IN_CODE = 40
 RANGE_CODE = 41
-
+COMMENT_CODE = 42
+FUNCTION_CODE = 43
+CLASS_CODE = 44
+WITH_CODE = 45
+OPEN_CODE = 46
+AS_CODE = 47
 
 in_fp = open("front.in", "r")
 txtdata = in_fp.read()
@@ -72,6 +77,9 @@ def lookup(ch):
     elif ch == '"':
         addChar()
         nextToken = QUOTE_CODE
+    elif ch == '#':
+        addChar()
+        nextToken = COMMENT_CODE
     else:
         addChar()
         nextToken = EOF
@@ -156,6 +164,16 @@ def lex():
             nextToken = IN_CODE
         elif lexeme == 'range':
             nextToken = RANGE_CODE
+        elif lexeme == 'def':
+            nextToken = FUNCTION_CODE
+        elif lexeme == "class":
+            nextToken = CLASS_CODE
+        elif lexeme == "with":
+            nextToken = WITH_CODE
+        elif lexeme == "open":
+            nextToken = OPEN_CODE
+        elif lexeme == "as":
+            nextToken = AS_CODE
         else:
             nextToken = IDENT
     elif charClass == DIGIT:
@@ -182,7 +200,6 @@ def lex():
 
 
 def statement():
-    # <statement> -> if_cond | print | for_loop_numbers | statement
     print("Start statement")
     if nextToken == IF_CODE or nextToken == ELIF_CODE or nextToken == ELSE_CODE:
         if_cond()
@@ -190,6 +207,16 @@ def statement():
         print_me()
     elif nextToken == FOR_CODE:
         for_loop()
+    elif nextToken == COMMENT_CODE:
+        comments()
+    elif nextToken == WHILE_CODE:
+        while_loop()
+    elif nextToken == FUNCTION_CODE:
+        function()
+    elif nextToken == CLASS_CODE:
+        class_call()
+    elif nextToken == WITH_CODE:
+        with_open()
     else:
         if nextToken != EOF:
             error()
@@ -297,29 +324,61 @@ def for_loop():
                 error()
             else:
                 lex()
-                if nextToken != RANGE_CODE:
-                    error()
-                else:
+                if nextToken == IDENT:
                     lex()
-                    if nextToken != LEFT_PAREN:
+                    if nextToken != SEMICOLON:
+                        error()
+                else:
+                    if nextToken != RANGE_CODE :
                         error()
                     else:
                         lex()
-                        if nextToken != INT_LIT:
+                        if nextToken != LEFT_PAREN:
                             error()
                         else:
                             lex()
-                            if nextToken != RIGHT_PAREN:
+                            if nextToken != INT_LIT:
                                 error()
                             else:
                                 lex()
-                                if nextToken != SEMICOLON:
-                                    lex()
+                                if nextToken != RIGHT_PAREN:
+                                    error()
                                 else:
-                                    pass
+                                    lex()
+                                    if nextToken != SEMICOLON:
+                                        lex()
+                                    else:
+                                        pass
     else:
         error()
     print("END for loop numbers")
+
+
+def while_loop():
+    print("Start While")
+
+    if nextToken == WHILE_CODE:
+        lex()
+        if nextToken == IDENT or nextToken == INT_LIT:  # while var or 1
+            lex()
+            if nextToken == SEMICOLON:  # while 1:
+                pass
+            elif nextToken == EQUAL_SIGN:
+                lex()
+                if nextToken != EQUAL_SIGN:  # while a ==
+                    error()
+                lex()
+                if nextToken == IDENT or nextToken == INT_LIT: # while a == 3
+                    lex()
+                    if nextToken != SEMICOLON: # while a == 3:
+                        error()
+                else:
+                    error()
+            else:
+                error()  # while 1 without :
+        else:
+            error()
+    print("End While")
 
 
 def check_boolean_syntax(equal_check):
@@ -356,6 +415,89 @@ def error():
     exit()
 
 
+def comments():
+    """
+    This Function checks if we are having a comment
+    A comment should starts and ends with #
+    Example: # This is my comment #
+    :return:
+    """
+    print("Start Comment ")
+    if nextToken == COMMENT_CODE:  # starts with #
+        lex()
+        while nextToken != COMMENT_CODE:  # read any useless comments
+            lex()
+        else:  # when you get out of the loop
+            if nextToken != COMMENT_CODE:  # if  # not found then that's an error
+                error()
+    print("End Comment ")
+
+
+def function():
+    print("Start Function")
+    if nextToken == FUNCTION_CODE:
+        lex()
+        a = 0
+        if nextToken == IDENT:
+            lex()
+            if nextToken == LEFT_PAREN:
+                lex()
+                if nextToken == RIGHT_PAREN:
+                    lex()
+                    if nextToken == SEMICOLON:
+                        a = 1
+        if a != 1:
+            error()
+        else:
+            pass
+    print("End Function")
+
+
+def class_call():
+    print("Start Class")
+
+    if nextToken == CLASS_CODE:
+        lex()
+        if nextToken != IDENT:
+            error()
+        else:
+            lex()
+            if nextToken != SEMICOLON:
+                error()
+            else:
+                pass
+    print("End Class")
+
+
+def with_open():
+    print("Start with")
+    if nextToken == WITH_CODE:
+        lex()
+        if nextToken != OPEN_CODE:
+            error()
+        else:
+            lex()
+            if nextToken != LEFT_PAREN:
+                error()
+            else:
+                while nextToken != RIGHT_PAREN:
+                    lex()
+                lex()
+                if nextToken != AS_CODE:
+                    error()
+                else:
+                    lex()
+                    if nextToken != IDENT:
+                        error()
+                    else:
+                        lex()
+                        if nextToken != SEMICOLON:
+                            error()
+                        else:
+                            pass
+    print("End with")
+
+
 def main():
     if in_fp == None:
         print("ERROR - cannot open front.in ")
@@ -368,11 +510,18 @@ def main():
     return 0
 
 
+# <program> -> <stmnt_list>
+# <stmnt_list> -> <stmnt> {<stmnt_list>}
+# <stmnt> -> <if> | <for> | <out> | <class> | <def> | <with>
+# <class> -> class <ident>:
+# <def> -> def <ident>():
+# <for> -> for <item> in range(<item>):
+# <while> -> while <bool_expr>:
+# <with> -> with open(<ident>) as <ident>:
+# <if > -> if <bool_expr>: <stmnt> [elif <bool_expr>: <stmnt>] [else: <stmnt>]
+# <out> -> out({<item>}+)
+# <bool_expr> -> <item> { (<|>|=>|<=|==) <item> }
+# <item> -> INT_LIT | IDENT
 
-# <statement> -> <if_cond> | <for_loop> | <out>
-# <if_cond> -> if <boolexpr>: <statement> [elif <boolexpr>: <statement>] [else: <statement>]
-# <for_loop> -> for IDENT in range(INT_LIT): <statement>
-# <boolexpr> -> INT_LIT | IDENT
-# <out> -> ("{bool_exp}")
 
 main()
